@@ -1,0 +1,6 @@
+@BuyMyHouse_HostAddress = http://localhost:5209
+
+GET {{BuyMyHouse_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
