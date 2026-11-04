@@ -1,0 +1,101 @@
+@BuyMyHouse_HostAddress = http://localhost:5209
+
+POST {{BuyMyHouse_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "jane@example.com",
+  "password": "Sup3rSecret",
+  "fullName": "Jane Doe"
+}
+
+###
+
+# @name login
+POST {{BuyMyHouse_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "jane@example.com",
+  "password": "Sup3rSecret"
+}
+
+###
+
+POST {{BuyMyHouse_HostAddress}}/api/listings
+Content-Type: multipart/form-data; boundary=listing
+Authorization: Bearer {{login.response.body.accessToken}}
+
+--listing
+Content-Disposition: form-data; name="title"
+
+Canal house in the Jordaan
+--listing
+Content-Disposition: form-data; name="description"
+
+Characterful canal house with garden.
+--listing
+Content-Disposition: form-data; name="price"
+
+1250000
+--listing
+Content-Disposition: form-data; name="squareMeters"
+
+145
+--listing
+Content-Disposition: form-data; name="region"
+
+Amsterdam
+--listing
+Content-Disposition: form-data; name="energyLabel"
+
+B
+--listing
+Content-Disposition: form-data; name="zipCode"
+
+1016 AB
+--listing
+Content-Disposition: form-data; name="houseNumber"
+
+12
+--listing
+Content-Disposition: form-data; name="houseNumberAddition"
+
+A
+--listing
+Content-Disposition: form-data; name="type"
+
+house
+--listing
+Content-Disposition: form-data; name="images"; filename="front.jpg"
+Content-Type: image/jpeg
+
+< ./sample-images/front.jpg
+--listing--
+
+###
+
+POST {{BuyMyHouse_HostAddress}}/api/mortgage-application
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.accessToken}}
+
+{
+  "maritalStatus": "married",
+  "employmentType": "employed",
+  "annualIncome": 85000,
+  "savings": 40000,
+  "debts": 2500,
+  "studentLoan": 15000
+}
+
+###
+
+GET {{BuyMyHouse_HostAddress}}/api/listings/search?location=Amsterdam&type=house&minPrice=500000&maxPrice=1500000
+Accept: application/json
+
+###
+
+GET {{BuyMyHouse_HostAddress}}/api/listings/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+###
