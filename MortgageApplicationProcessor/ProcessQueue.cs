@@ -1,10 +1,11 @@
 ﻿using Azure.Storage.Queues.Models;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using MortgageApplicationProcessor.Application.Services;
 
 namespace MortgageApplicationProcessor;
 
-public class ProcessQueue(ILogger<ProcessQueue> logger)
+public class ProcessQueue(ILogger<ProcessQueue> logger, IQueueReader queueReader, IQueuePublisher queuePublisher)
 {
     [Function("ProcessQueue")]
     public void Run([TimerTrigger("0 0 * * *")] TimerInfo myTimer)
@@ -16,10 +17,5 @@ public class ProcessQueue(ILogger<ProcessQueue> logger)
             logger.LogInformation("Next timer schedule at: {nextSchedule}", myTimer.ScheduleStatus.Next);
             
         }
-    }
-    
-    private Task<QueueMessage> GetNextMessage()
-    {
-        return null;
     }
 }
