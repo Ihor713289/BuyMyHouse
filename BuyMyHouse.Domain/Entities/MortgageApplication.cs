@@ -34,6 +34,8 @@ public class MortgageApplication : ITableEntity
     public double StudentLoan { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public string? OfferUrl { get; set; }
+    // Set by SendOffers once the offer email went out, so a re-delivered queue message doesn't email it twice.
+    public DateTimeOffset? OfferSentAt { get; set; }
 
     public static string ToPartitionKey(string userId) => userId;
 }

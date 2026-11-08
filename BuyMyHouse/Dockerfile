@@ -8,6 +8,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["BuyMyHouse/BuyMyHouse.csproj", "BuyMyHouse/"]
+COPY ["BuyMyHouse.Domain/BuyMyHouse.Domain.csproj", "BuyMyHouse.Domain/"]
 RUN dotnet restore "BuyMyHouse/BuyMyHouse.csproj"
 COPY . .
 WORKDIR "/src/BuyMyHouse"

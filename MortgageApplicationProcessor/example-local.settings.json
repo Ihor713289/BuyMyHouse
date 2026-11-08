@@ -1,0 +1,14 @@
+﻿{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "Storage__Queues__ConnectionString": "UseDevelopmentStorage=true",
+    "Storage__Queues__Read": "mortgage-applications",
+    "Storage__Queues__Write": "mortgage-offers",
+    "Storage__Tables__ConnectionString": "UseDevelopmentStorage=true",
+    "Storage__Tables__MortgageApplicationsTableName": "mortgageapplications",
+    "Storage__Blobs__ConnectionString": "UseDevelopmentStorage=true",
+    "Storage__Blobs__OffersContainerName": "mortgage-offers"
+  }
+}

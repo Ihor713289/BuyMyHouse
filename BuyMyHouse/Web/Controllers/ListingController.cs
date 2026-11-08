@@ -38,7 +38,6 @@ public class ListingController(ISender sender) : ControllerBase
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [Consumes("multipart/form-data")]
-    // Room for the maximum number of maximum-size images, plus the listing's text fields.
     [RequestSizeLimit(MaxRequestBytes)]
     [RequestFormLimits(MultipartBodyLengthLimit = MaxRequestBytes)]
     public async Task<IActionResult> Create([FromForm] ListingWriteRequest request, [FromForm] List<IFormFile> images, CancellationToken cancellationToken)

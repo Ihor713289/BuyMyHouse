@@ -27,4 +27,8 @@
       <Content Update="Web\appsettings*.json" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\BuyMyHouse.Domain\BuyMyHouse.Domain.csproj" />
+    </ItemGroup>
+
 </Project>

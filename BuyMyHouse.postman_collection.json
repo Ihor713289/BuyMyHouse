@@ -1,0 +1,596 @@
+{
+  "info": {
+    "name": "BuyMyHouse",
+    "description": "End-to-end flow for the BuyMyHouse API: register -> login -> create listing -> read/search listings -> submit mortgage application -> trigger the MortgageApplicationProcessor function.\n\nRun the folders in order (Collection Runner works). Requests save tokens and IDs into collection variables for later requests to use.\n\nPrerequisites:\n- Azurite running (tables, queues, blobs)\n- BuyMyHouse web API running on the `http` profile (http://localhost:5209)\n- MortgageApplicationProcessor running with `func start` / Rider (port 7085) for folder 5",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{accessToken}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5209" },
+    { "key": "processorUrl", "value": "http://localhost:7085" },
+    { "key": "email", "value": "" },
+    { "key": "password", "value": "Passw0rd!" },
+    { "key": "fullName", "value": "Jan de Vries" },
+    { "key": "accessToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "region", "value": "Amsterdam" },
+    { "key": "listingId", "value": "" },
+    { "key": "mortgageApplicationId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0. Health",
+      "item": [
+        {
+          "name": "OpenAPI document",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('API is up (200)', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/openapi/v1.json",
+            "description": "Only mapped in the Development environment."
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Register - invalid (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Has validation errors', () => pm.expect(pm.response.json().errors).to.be.an('object'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"weak\",\n  \"fullName\": \"\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/register"
+          }
+        },
+        {
+          "name": "Register (200)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Unique email per run, so the request doesn't hit 409 Conflict.",
+                  "pm.collectionVariables.set('email', `user-${Date.now()}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Returns access token', () => pm.expect(body.accessToken).to.be.a('string').and.not.empty);",
+                  "pm.test('Echoes email', () => pm.expect(body.email).to.eql(pm.collectionVariables.get('email')));",
+                  "pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "pm.collectionVariables.set('userId', body.userId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"fullName\": \"{{fullName}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/register"
+          }
+        },
+        {
+          "name": "Register - duplicate email (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"fullName\": \"{{fullName}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/register"
+          }
+        },
+        {
+          "name": "Login - wrong password (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"WrongPassw0rd\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Login (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Returns access token', () => pm.expect(body.accessToken).to.be.a('string').and.not.empty);",
+                  "pm.test('Same user as registered', () => pm.expect(body.userId).to.eql(pm.collectionVariables.get('userId')));",
+                  "pm.collectionVariables.set('accessToken', body.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Listings - create",
+      "item": [
+        {
+          "name": "Create listing - no token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "Title", "value": "Should not be created", "type": "text" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/listings"
+          }
+        },
+        {
+          "name": "Create listing - invalid (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Has validation errors', () => pm.expect(pm.response.json().errors).to.be.an('object'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "Title", "value": "Broken listing", "type": "text" },
+                { "key": "Description", "value": "Invalid zip code, energy label and type", "type": "text" },
+                { "key": "Price", "value": "-1", "type": "text" },
+                { "key": "SquareMeters", "value": "0", "type": "text" },
+                { "key": "Region", "value": "{{region}}", "type": "text" },
+                { "key": "EnergyLabel", "value": "Z", "type": "text" },
+                { "key": "ZipCode", "value": "ABCD 12", "type": "text" },
+                { "key": "HouseNumber", "value": "0", "type": "text" },
+                { "key": "Type", "value": "castle", "type": "text" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/listings"
+          }
+        },
+        {
+          "name": "Create listing (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('Returns id', () => pm.expect(body.id).to.be.a('string').and.not.empty);",
+                  "pm.test('Location header set', () => pm.response.to.have.header('Location'));",
+                  "pm.collectionVariables.set('listingId', body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "Title", "value": "Canal house in the Jordaan", "type": "text" },
+                { "key": "Description", "value": "Bright 3-bedroom canal house with a garden.", "type": "text" },
+                { "key": "Price", "value": "650000", "type": "text" },
+                { "key": "SquareMeters", "value": "120", "type": "text" },
+                { "key": "Region", "value": "{{region}}", "type": "text" },
+                { "key": "EnergyLabel", "value": "A++", "type": "text" },
+                { "key": "ZipCode", "value": "1015 AB", "type": "text" },
+                { "key": "HouseNumber", "value": "42", "type": "text" },
+                { "key": "HouseNumberAddition", "value": "A", "type": "text" },
+                { "key": "Type", "value": "house", "type": "text" },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": [],
+                  "disabled": true,
+                  "description": "Optional. Enable and pick one or more .jpg/.png/.webp files (max 20, 10 MB each)."
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/listings"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Listings - read",
+      "item": [
+        {
+          "name": "Get listing by id (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Correct listing', () => pm.expect(body.rowKey).to.eql(pm.collectionVariables.get('listingId')));",
+                  "pm.test('Fields round-trip', () => {",
+                  "  pm.expect(body.region).to.eql(pm.collectionVariables.get('region'));",
+                  "  pm.expect(body.price).to.eql(650000);",
+                  "  pm.expect(body.energyLabel).to.eql('A++');",
+                  "  pm.expect(body.type).to.eql('house');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/listings/{{listingId}}"
+          }
+        },
+        {
+          "name": "Get listing by id - unknown (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/listings/00000000-0000-0000-0000-000000000000"
+          }
+        },
+        {
+          "name": "Get listing by id - not a GUID (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/listings/not-a-guid"
+          }
+        },
+        {
+          "name": "Search - no filters (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Contains created listing', () => pm.expect(body.map(l => l.rowKey)).to.include(pm.collectionVariables.get('listingId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/listings/search"
+          }
+        },
+        {
+          "name": "Search - all filters (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Contains created listing', () => pm.expect(body.map(l => l.rowKey)).to.include(pm.collectionVariables.get('listingId')));",
+                  "pm.test('All results match filters', () => body.forEach(l => {",
+                  "  pm.expect(l.type).to.eql('house');",
+                  "  pm.expect(l.price).to.be.within(500000, 700000);",
+                  "}));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/listings/search?location={{region}}&type=house&minPrice=500000&maxPrice=700000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "listings", "search"],
+              "query": [
+                { "key": "location", "value": "{{region}}" },
+                { "key": "type", "value": "house" },
+                { "key": "minPrice", "value": "500000" },
+                { "key": "maxPrice", "value": "700000" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search - price range excludes listing (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Created listing filtered out', () => pm.expect(pm.response.json().map(l => l.rowKey)).to.not.include(pm.collectionVariables.get('listingId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/listings/search?location={{region}}&maxPrice=100000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "listings", "search"],
+              "query": [
+                { "key": "location", "value": "{{region}}" },
+                { "key": "maxPrice", "value": "100000" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search - invalid filters (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/listings/search?type=castle&minPrice=500000&maxPrice=100000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "listings", "search"],
+              "query": [
+                { "key": "type", "value": "castle" },
+                { "key": "minPrice", "value": "500000" },
+                { "key": "maxPrice", "value": "100000" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Mortgage application",
+      "item": [
+        {
+          "name": "Submit application - no token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maritalStatus\": \"single\",\n  \"employmentType\": \"employed\",\n  \"annualIncome\": 65000,\n  \"savings\": 20000,\n  \"debts\": 0,\n  \"studentLoan\": 0\n}"
+            },
+            "url": "{{baseUrl}}/api/mortgage-application"
+          }
+        },
+        {
+          "name": "Submit application - invalid (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Has validation errors', () => pm.expect(pm.response.json().errors).to.be.an('object'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maritalStatus\": \"complicated\",\n  \"employmentType\": \"1\",\n  \"annualIncome\": 0,\n  \"savings\": -5,\n  \"debts\": 0,\n  \"studentLoan\": 0\n}"
+            },
+            "url": "{{baseUrl}}/api/mortgage-application"
+          }
+        },
+        {
+          "name": "Submit application (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('Returns id', () => pm.expect(body.id).to.be.a('string').and.not.empty);",
+                  "pm.collectionVariables.set('mortgageApplicationId', body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maritalStatus\": \"married\",\n  \"employmentType\": \"employed\",\n  \"annualIncome\": 85000,\n  \"savings\": 40000,\n  \"debts\": 2500,\n  \"studentLoan\": 15000\n}"
+            },
+            "url": "{{baseUrl}}/api/mortgage-application",
+            "description": "Stores the application and puts its id on the `mortgage-applications` queue."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Processor (Azure Function)",
+      "item": [
+        {
+          "name": "Trigger ProcessQueue manually (202)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 202 Accepted', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"input\": \"\"\n}"
+            },
+            "url": "{{processorUrl}}/admin/functions/ProcessQueue",
+            "description": "Runs the timer-triggered function now, without waiting for its schedule. Locally no key is needed. In Azure, add header `x-functions-key: <master key>` and use the function app URL. Check the function's console output for the result."
+          }
+        }
+      ]
+    }
+  ]
+}

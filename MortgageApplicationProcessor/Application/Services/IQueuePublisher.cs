@@ -2,5 +2,5 @@
 
 public interface IQueuePublisher
 {
-    Task PublishAsync(string message);
+    Task PublishAsync(string message, CancellationToken cancellationToken = default);
 }

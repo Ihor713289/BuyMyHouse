@@ -1,0 +1,19 @@
+﻿{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "Storage__Queues__ConnectionString": "UseDevelopmentStorage=true",
+    "Storage__Queues__Read": "mortgage-offers",
+    "Storage__Tables__ConnectionString": "UseDevelopmentStorage=true",
+    "Storage__Tables__MortgageApplicationsTableName": "mortgageapplications",
+    "Storage__Tables__UsersTableName": "users",
+    "Storage__Blobs__ConnectionString": "UseDevelopmentStorage=true",
+    "Smtp__Host": "localhost",
+    "Smtp__Port": "2525",
+    "Smtp__Security": "None",
+    "Smtp__FromAddress": "offers@buymyhouse.local",
+    "Smtp__FromName": "BuyMyHouse",
+    "OfferEmail__LinkValidityHours": "24"
+  }
+}
